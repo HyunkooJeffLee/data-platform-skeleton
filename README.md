@@ -1,14 +1,14 @@
 # data-platform-skeleton
 
-> A minimal, opinionated skeleton of an energy/weather telemetry pipeline: PostgreSQL & Kafka sources orchestrated by Airflow into StarRocks (OLAP serving) and Druid (real-time time-series).
+> Energy/weather telemetry pipeline skeleton: PostgreSQL and Kafka sources, orchestrated by Airflow into StarRocks (OLAP serving) and Druid (real-time time-series).
 
 ## 설계 의도
 
-- **실제로 운영해 본 파이프라인의 뼈대만 남긴다.** 화려한 기능이 아니라 정확성과 설계 의도를 보이는 것이 목적이다. 도메인은 특정 회사와 무관한 일반적인 센서/에너지 텔레메트리로 고정한다.
+- **도메인은 일반적인 센서/에너지 텔레메트리로 고정한다.** 특정 회사와 무관한 예시 스키마만 쓴다.
 - **오케스트레이션(Airflow)과 저장/서빙(StarRocks·Druid)의 경계를 분리한다.** Airflow는 "언제·무엇을·어떤 순서로"만 책임지고, 적재·집계·업서트 모델링은 StarRocks DDL과 로더가 책임진다.
 - **멱등성(idempotency)을 기본 전제로 둔다.** 증분 적재는 high-watermark로 경계를 관리하고, Stream Load label로 재시도 시 중복 적재를 막는다. 백필은 파티션 단위로만 덮어쓰고 전체 재적재(full-refresh)를 하지 않는다.
-- **데이터 품질 게이트는 skip이 아니라 fail이다.** row-count·null-ratio·freshness 위반은 태스크를 실패시켜 다운스트림을 막고 알림을 유발한다. 조용히 넘어가지 않는다.
-- **Druid → StarRocks 마이그레이션은 "더 빠르다"가 아니라 메커니즘으로 설명한다.** p95 개선의 출처(colocation join, materialized view rewrite, sort-key pruning, vectorized exec)를 `docs/druid-to-starrocks.md`에 정직하게 적는다.
+- **데이터 품질 게이트는 skip이 아니라 fail이다.** row-count·null-ratio·freshness 위반은 태스크를 실패시켜 다운스트림을 막고 알림을 유발한다.
+- **Druid → StarRocks 마이그레이션의 p95 개선 출처를 메커니즘 단위로 정리한다.** colocation join, materialized view rewrite, sort-key pruning, vectorized exec — `docs/druid-to-starrocks.md`.
 
 ## 구조
 
@@ -16,7 +16,7 @@
 data-platform-skeleton/
 ├── docs/
 │   ├── architecture.md          # source → Airflow → StarRocks/Druid → serving 전체 흐름
-│   └── druid-to-starrocks.md     # 마이그레이션 근거와 p95 개선의 출처 (정직한 트레이드오프)
+│   └── druid-to-starrocks.md     # 마이그레이션 근거와 p95 개선의 출처
 ├── airflow/                      # 오케스트레이션 (Airflow 2.10, TaskFlow API)
 │   ├── dags/ingest_incremental.py    # 증분 적재 (멱등, high-watermark)
 │   ├── dags/backfill_partitioned.py  # 파티션 단위 백필 (no full-refresh)
@@ -30,15 +30,15 @@ data-platform-skeleton/
 
 ## 데이터 흐름
 
-```
-PostgreSQL (운영 DB, 메타/디멘전)  ─┐
-                                    ├─▶  Airflow  ─▶  StarRocks (배치 OLAP 서빙, BI·조인 질의)
-Kafka (센서 텔레메트리 스트림)     ─┘        │
-                                             └────────▶  Druid    (실시간 시계열 대시보드)
+```mermaid
+flowchart LR
+    PG[("PostgreSQL<br/>운영 DB · 디멘전")] --> AF["Airflow"]
+    AF -->|"Stream Load"| SR["StarRocks<br/>배치 OLAP · BI/조인 질의"]
+    KAFKA[("Kafka<br/>센서 텔레메트리 스트림")] -->|"Kafka supervisor"| DRUID["Druid<br/>실시간 시계열 대시보드"]
 ```
 
-- 배치·조인 중심 분석 질의 → **StarRocks**
-- 실시간 append-only 시계열 → **Druid**
+- 배치·조인 중심 분석 질의 → StarRocks
+- 실시간 append-only 시계열 → Druid
 - 두 경로를 언제 쓰는지는 `docs/architecture.md` 참고.
 
 ## 검증 방법
