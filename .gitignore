@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# Airflow local runtime (never commit state, logs, or DB)
+airflow.cfg
+airflow.db
+airflow-webserver.pid
+standalone_admin_password.txt
+logs/
+plugins/
+
+# Secrets / connections — resolved at runtime via Airflow Connections or env
+*.pem
+*.key
+secrets.*
+connections.json
+
+# Data samples — this repo carries schema and code, never real data
+*.csv
+*.parquet
+data/

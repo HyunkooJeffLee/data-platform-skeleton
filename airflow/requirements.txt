@@ -1,0 +1,15 @@
+# Airflow 2.10 line (TaskFlow API). Pin to one stable minor and stay consistent.
+# Install with the matching constraints file so provider deps resolve reproducibly:
+#   pip install -r requirements.txt \
+#     --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.10.3/constraints-3.11.txt"
+apache-airflow==2.10.3
+
+# Providers (versions are representative pins for the 2.10 line; the constraints
+# file above is the source of truth if these drift).
+apache-airflow-providers-postgres==5.13.1   # PostgresHook (source + watermark backend)
+apache-airflow-providers-mysql==5.7.2        # MySqlHook -> StarRocks FE (MySQL wire protocol)
+apache-airflow-providers-common-sql==1.18.0
+
+# Runtime deps used directly in DAGs.
+pendulum==3.0.0    # tz-aware schedule/start_date
+requests==2.32.3   # StarRocks Stream Load over HTTP
